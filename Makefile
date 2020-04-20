@@ -14,3 +14,11 @@ help: ## Show this help
 build: ## build the binary
 	go build -o rawk8stfc main.go
 
+build-test-image: ## build the docker test image
+	docker build -f Dockerfile.test . -t integration-tests
+
+integration-tests: build-test-image ## validate golden files work with terraform-provider-k8s
+	docker run -it --rm -v /var/run/docker.sock:/var/run/docker.sock integration-tests
+
+shell: build-test-image ## run the integration-tests container and interact with it
+	docker run -it --rm -v /var/run/docker.sock:/var/run/docker.sock --entrypoint bash integration-tests

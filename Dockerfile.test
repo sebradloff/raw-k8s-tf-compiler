@@ -1,0 +1,38 @@
+ARG TF_VERSION=0.12.24
+
+FROM hashicorp/terraform:$TF_VERSION
+
+RUN apk add --update --no-cache curl tar docker bash
+
+WORKDIR /tmp
+
+# Install kubectl
+ARG KUBECTL_VERSION=1.18.1
+RUN curl -sLO "https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl" && \
+    mv kubectl /usr/bin/kubectl && \
+    chmod +x /usr/bin/kubectl
+
+# Install kind
+ARG KIND_VERSION=0.7.0
+RUN curl -sLo kind "https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-linux-amd64" && \
+    mv kind /usr/bin/kind && \
+    chmod +x /usr/bin/kind
+    
+# terraform provider setup
+ARG PROVIDER_VERSION=0.7.6
+ARG PROVIDER_NAME="terraform-provider-k8s"
+ARG TF_PLUGIN_NAME="${PROVIDER_NAME}_v${PROVIDER_VERSION}"
+
+ARG PLUGINS_DIR="/root/.terraform.d/plugins"
+ARG PROVIDER_RELEASE_URL="https://github.com/banzaicloud/terraform-provider-k8s/releases/download/v${PROVIDER_VERSION}/terraform-provider-k8s_${PROVIDER_VERSION}_linux_amd64.tar.gz"
+
+RUN mkdir -p $PLUGINS_DIR
+RUN curl -sL "${PROVIDER_RELEASE_URL}" | tar xvz -C "${PLUGINS_DIR}" -f - "${PROVIDER_NAME}" --transform="s/.*/${TF_PLUGIN_NAME}/"
+
+
+# Copy over testdata
+WORKDIR /tmp/integration-tests
+COPY testdata/integration-tests .
+COPY testdata/golden .
+
+ENTRYPOINT ["/bin/bash", "/tmp/integration-tests/test-runner.bash"]
