@@ -2,6 +2,7 @@ package cmd_test
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -10,6 +11,14 @@ import (
 
 	"github.com/sebradloff/rawk8stfc/cmd"
 )
+
+var (
+	updateFlag bool
+)
+
+func init() {
+	flag.BoolVar(&updateFlag, "update", false, "Set this flag to update the golden files.")
+}
 
 func TestRoot(t *testing.T) {
 	testName := "one-obj"
@@ -24,6 +33,15 @@ func TestRoot(t *testing.T) {
 	err := cmd.RunE(cmd, []string{})
 	if err != nil {
 		t.Errorf("running root command failed. err = %v", err)
+	}
+
+	if updateFlag {
+		cmd.Flags().Set("k8sFile", k8sFile)
+		cmd.Flags().Set("outputFile", goldenFile)
+		err := cmd.RunE(cmd, []string{})
+		if err != nil {
+			t.Errorf("running root command failed. err = %v", err)
+		}
 	}
 
 	got, err := os.Open(outputFile)
