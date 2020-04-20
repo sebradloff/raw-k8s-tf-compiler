@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/sebradloff/rk8stfc/cmd"
+	"github.com/sebradloff/rawk8stfc/cmd"
 )
 
 func main() {
