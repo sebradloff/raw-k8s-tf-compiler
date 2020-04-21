@@ -27,6 +27,9 @@ func TestRoot(t *testing.T) {
 		"One file with one kubernetes object": {
 			k8sFileName: "one-obj",
 		},
+		"One file with multiple kubernetes objects": {
+			k8sFileName: "multiple-objs",
+		},
 	}
 
 	for name, tc := range tests {

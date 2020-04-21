@@ -24,3 +24,23 @@ spec:
 EOT
 }
 
+resource "k8s_manifest" "default-v1-Service-nginx" {
+  content =  <<EOT
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: nginx
+  name: nginx
+spec:
+  clusterIP: ""
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: http
+  selector:
+    app: nginx
+EOT
+}
+

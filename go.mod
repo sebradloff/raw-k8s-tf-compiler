@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/agext/levenshtein v1.2.2 // indirect
+	github.com/ghodss/yaml v1.0.0
 	github.com/hashicorp/hcl2 v0.0.0-20191002203319-fb75b3253c80
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.0 // indirect

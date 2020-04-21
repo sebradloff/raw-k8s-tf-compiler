@@ -8,7 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/hashicorp/hcl2/gohcl"
+	yaml2 "github.com/ghodss/yaml"
+	"github.com/hashicorp/hcl2/hcl/hclsyntax"
 	"github.com/hashicorp/hcl2/hclwrite"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -48,64 +49,84 @@ var rootCmd = &cobra.Command{
 			filesToTransform = append(filesToTransform, k8sFile)
 		}
 
-		type resource struct {
-			K8sManifest string `hcl:"k8s_manifest,label"`
-			Name        string `hcl:"name,label"`
-			Content     string `hcl:"content"`
-		}
-		type tfStruct struct {
-			Resources []resource `hcl:"resource,block"`
-		}
-
-		var tfRes tfStruct
+		tfFile := hclwrite.NewEmptyFile()
+		rootBody := tfFile.Body()
+		// write hcl to tf file
+		defer tfFile.Body().Clear()
 
 		for _, f := range filesToTransform {
-			fmt.Println("****" + f)
 
 			data, err := ioutil.ReadFile(f)
 			if err != nil {
 				return fmt.Errorf("could not ioutil.ReadFile(%s); err = %v", f, err)
 			}
 
-			var objects []*unstructured.Unstructured
 			decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(string(data)), 4096)
 
 			// allows us to capture yaml streams
 			for {
-				var object *unstructured.Unstructured
-
-				err = decoder.Decode(&object)
+				var o *unstructured.Unstructured
+				// decode one yaml strem into a k8s object
+				err = decoder.Decode(&o)
 				if err != nil && err != io.EOF {
-					return fmt.Errorf("Failed to unmarshal manifest: %s", err)
+					return fmt.Errorf("Failed to unmarshal manifest: %v", err)
 				}
 				if err == io.EOF {
 					break
 				}
 
-				objects = append(objects, object)
-			}
-
-			for _, v := range objects {
-				res := resource{
-					K8sManifest: "k8s_manifest",
-					Name:        v.GetName(),
-					Content:     "cool2",
+				objectJSON, err := o.MarshalJSON()
+				if err != nil {
+					return fmt.Errorf("Failed to marshall one object into json: %v", err)
+				}
+				objectYaml, err := yaml2.JSONToYAML(objectJSON)
+				if err != nil {
+					return fmt.Errorf("Failed to marshall one object json into yaml: %v", err)
 				}
 
-				tfRes.Resources = append(tfRes.Resources, res)
+				ns := o.GetNamespace()
+				if ns == "" {
+					ns = "default"
+				}
+				groupVersion := strings.Replace(o.GroupVersionKind().GroupVersion().String(), "/", "_", -1)
+				resourceName := strings.Join([]string{ns, groupVersion, o.GetKind(), o.GetName()}, "-")
+
+				contentBytes := []byte("<<EOT\n")
+				contentBytes = append(contentBytes, objectYaml...)
+				contentBytes = append(contentBytes, []byte("EOT\n")...)
+
+				// create tf resource block
+				resourceBlock := rootBody.AppendNewBlock("resource", []string{"k8s_manifest", resourceName})
+
+				tokens := hclwrite.Tokens{
+
+					{
+						Type: hclsyntax.TokenTabs,
+					},
+					{
+						Type:  hclsyntax.TokenCQuote,
+						Bytes: []byte("content = "),
+					},
+					{
+						Type:  hclsyntax.TokenOHeredoc,
+						Bytes: contentBytes,
+					},
+					{
+						Type: hclsyntax.TokenNewline,
+					},
+				}
+				resourceBlock.Body().BuildTokens(tokens)
+				resourceBlock.Body().AppendUnstructuredTokens(tokens)
+				rootBody.AppendNewline()
 			}
 		}
-
-		f := hclwrite.NewEmptyFile()
-		gohcl.EncodeIntoBody(&tfRes, f.Body())
-		defer f.Body().Clear()
 
 		oF, err := os.Create(outputFile)
 		if err != nil {
 			return fmt.Errorf("could not os.Create(%s); err = %v", outputFile, err)
 		}
 		defer oF.Close()
-		_, err = f.WriteTo(oF)
+		_, err = tfFile.WriteTo(oF)
 		if err != nil {
 			return fmt.Errorf("could not write to file %s; err = %v", oF.Name(), err)
 		}
