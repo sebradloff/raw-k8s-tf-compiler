@@ -12,4 +12,5 @@ require (
 	github.com/zclconf/go-cty v1.2.1 // indirect
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a // indirect
 	k8s.io/apimachinery v0.18.2
+	github.com/hashicorp/hcl/v2 v2.4.0
 )

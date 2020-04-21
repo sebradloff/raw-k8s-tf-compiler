@@ -8,9 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	yaml2 "github.com/ghodss/yaml"
-	"github.com/hashicorp/hcl2/hcl/hclsyntax"
-	"github.com/hashicorp/hcl2/hclwrite"
+	"github.com/sebradloff/rawk8stfc/pkg/hcl"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -21,6 +19,7 @@ var (
 	outputFile string
 )
 
+// TestCmd returns the unexported rootCmd variable
 func TestCmd() *cobra.Command {
 	return rootCmd
 }
@@ -31,11 +30,13 @@ var rootCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var filesToTransform []string
 
+		// determine if k8sFile is a file or directory
 		fi, err := os.Stat(k8sFile)
 		if err != nil {
 			return fmt.Errorf("could not get os.Stat(%s); err = %v", k8sFile, err)
 		}
 		if fi.Mode().IsDir() {
+			// get all files in directory
 			files, err := ioutil.ReadDir(k8sFile)
 			if err != nil {
 				return fmt.Errorf("could not ioutil.ReadDir(%s); err = %v", k8sFile, err)
@@ -49,10 +50,8 @@ var rootCmd = &cobra.Command{
 			filesToTransform = append(filesToTransform, k8sFile)
 		}
 
-		tfFile := hclwrite.NewEmptyFile()
-		rootBody := tfFile.Body()
 		// write hcl to tf file
-		defer tfFile.Body().Clear()
+		hF := hcl.NewHCLFile()
 
 		for _, f := range filesToTransform {
 
@@ -75,62 +74,17 @@ var rootCmd = &cobra.Command{
 					break
 				}
 
-				objectJSON, err := o.MarshalJSON()
+				err := hF.K8sObjectToResourceBlock(o)
 				if err != nil {
-					return fmt.Errorf("Failed to marshall one object into json: %v", err)
+					return fmt.Errorf("error adding k8s object to resource block: %v", err)
 				}
-				objectYaml, err := yaml2.JSONToYAML(objectJSON)
-				if err != nil {
-					return fmt.Errorf("Failed to marshall one object json into yaml: %v", err)
-				}
-
-				ns := o.GetNamespace()
-				if ns == "" {
-					ns = "default"
-				}
-				groupVersion := strings.Replace(o.GroupVersionKind().GroupVersion().String(), "/", "_", -1)
-				resourceName := strings.Join([]string{ns, groupVersion, o.GetKind(), o.GetName()}, "-")
-
-				contentBytes := []byte("<<EOT\n")
-				contentBytes = append(contentBytes, objectYaml...)
-				contentBytes = append(contentBytes, []byte("EOT\n")...)
-
-				// create tf resource block
-				resourceBlock := rootBody.AppendNewBlock("resource", []string{"k8s_manifest", resourceName})
-
-				tokens := hclwrite.Tokens{
-
-					{
-						Type: hclsyntax.TokenTabs,
-					},
-					{
-						Type:  hclsyntax.TokenCQuote,
-						Bytes: []byte("content = "),
-					},
-					{
-						Type:  hclsyntax.TokenOHeredoc,
-						Bytes: contentBytes,
-					},
-					{
-						Type: hclsyntax.TokenNewline,
-					},
-				}
-				resourceBlock.Body().BuildTokens(tokens)
-				resourceBlock.Body().AppendUnstructuredTokens(tokens)
-				rootBody.AppendNewline()
 			}
 		}
 
-		oF, err := os.Create(outputFile)
+		err = hF.WriteToFile(outputFile)
 		if err != nil {
-			return fmt.Errorf("could not os.Create(%s); err = %v", outputFile, err)
+			return fmt.Errorf("error writing hcl to file %s; err = %v", outputFile, err)
 		}
-		defer oF.Close()
-		_, err = tfFile.WriteTo(oF)
-		if err != nil {
-			return fmt.Errorf("could not write to file %s; err = %v", oF.Name(), err)
-		}
-
 		return nil
 	},
 }

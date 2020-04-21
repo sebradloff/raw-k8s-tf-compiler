@@ -1,5 +1,5 @@
 resource "k8s_manifest" "default-apps_v1-Deployment-nginx-deployment" {
-  content =  <<EOT
+  content = <<EOT
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,5 +22,6 @@ spec:
         ports:
         - containerPort: 80
 EOT
+
 }
 

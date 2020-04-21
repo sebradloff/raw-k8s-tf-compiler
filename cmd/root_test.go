@@ -35,7 +35,7 @@ func TestRoot(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			k8sFile := filepath.Join("../testdata", "k8s-files", fmt.Sprintf("%s.yaml", tc.k8sFileName))
-			outputFile := filepath.Join(os.TempDir(), fmt.Sprintf("%s.yaml", tc.k8sFileName))
+			outputFile := filepath.Join(os.TempDir(), fmt.Sprintf("%s.tf", tc.k8sFileName))
 			goldenFile := filepath.Join("../testdata", "golden", fmt.Sprintf("%s.tf", tc.k8sFileName))
 
 			cmd := cmd.TestCmd()
