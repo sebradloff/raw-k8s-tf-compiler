@@ -20,4 +20,6 @@ sed -i "s/server:.*/server: https:\/\/$MASTER_IP:6443/" $HOME/.kube/config
 
 terraform init
 terraform plan
+terraform destroy -auto-approve
 terraform apply -auto-approve
+# terraform destroy -auto-approve

@@ -17,6 +17,7 @@ import (
 var (
 	k8sFile    string
 	outputFile string
+	inlineK8s  bool
 )
 
 // TestCmd returns the unexported rootCmd variable
@@ -74,7 +75,7 @@ var rootCmd = &cobra.Command{
 					break
 				}
 
-				err := hF.K8sObjectToResourceBlock(o)
+				err := hF.K8sObjectToResourceBlock(o, "")
 				if err != nil {
 					return fmt.Errorf("error adding k8s object to resource block: %v", err)
 				}
@@ -99,4 +100,5 @@ func init() {
 	rootCmd.Flags().StringVarP(&outputFile, "outputFile", "o", "", "output file where generated tf will be written")
 	rootCmd.MarkFlagRequired("k8sFile")
 	rootCmd.MarkFlagRequired("outputFile")
+	rootCmd.Flags().BoolVarP(&inlineK8s, "inlineK8s", "i", true, "the content attribute in the resource block will have k8s yaml as a heredoc by default. If false, it will refernce the k8s file.")
 }
