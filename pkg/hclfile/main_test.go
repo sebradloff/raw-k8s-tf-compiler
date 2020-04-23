@@ -1,4 +1,4 @@
-package hcl_test
+package hclfile_test
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
-	h "github.com/sebradloff/rawk8stfc/pkg/hcl"
+	h "github.com/sebradloff/rawk8stfc/pkg/hclfile"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 

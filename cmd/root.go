@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sebradloff/rawk8stfc/pkg/hcl"
+	"github.com/sebradloff/rawk8stfc/pkg/hclfile"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -53,7 +53,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		// write hcl to tf file
-		hF := hcl.NewHCLFile()
+		hF := hclfile.NewHCLFile()
 
 		for _, f := range filesToTransform {
 
