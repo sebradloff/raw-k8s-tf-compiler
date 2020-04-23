@@ -1,20 +1,20 @@
-resource "k8s_manifest" "default-apps_v1-Deployment-nginx-deployment" {
+resource "k8s_manifest" "default-apps_v1-Deployment-nginx-deployment-two" {
   content = <<EOT
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: nginx
-  name: nginx-deployment
+    app: nginx-two
+  name: nginx-deployment-two
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: nginx
+      app: nginx-two
   template:
     metadata:
       labels:
-        app: nginx
+        app: nginx-two
     spec:
       containers:
       - image: nginx:1.7.9
@@ -24,14 +24,14 @@ spec:
 EOT
 }
 
-resource "k8s_manifest" "default-v1-Service-nginx" {
+resource "k8s_manifest" "default-v1-Service-nginx-two" {
   content = <<EOT
 apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: nginx
-  name: nginx
+    app: nginx-two
+  name: nginx-two
 spec:
   clusterIP: ""
   ports:
@@ -40,7 +40,7 @@ spec:
     protocol: TCP
     targetPort: http
   selector:
-    app: nginx
+    app: nginx-two
 EOT
 }
 
