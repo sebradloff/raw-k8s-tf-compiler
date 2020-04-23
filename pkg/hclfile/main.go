@@ -97,11 +97,11 @@ func (f *HCLFile) AddK8sObjectToResourceBlockContentInline(o *unstructured.Unstr
 
 	oJSON, err := o.MarshalJSON()
 	if err != nil {
-		return fmt.Errorf("failed to marshall one object into json: %v", err)
+		return fmt.Errorf("failed to marshall object into json: %v", err)
 	}
 	oYaml, err := yaml.JSONToYAML(oJSON)
 	if err != nil {
-		return fmt.Errorf("failed to marshall one object json into yaml: %v", err)
+		return fmt.Errorf("failed to transform object json into yaml: %v", err)
 	}
 
 	tokens := hclwrite.Tokens{
