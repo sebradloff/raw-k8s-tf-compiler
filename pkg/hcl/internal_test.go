@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/v2/hclwrite"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 func Test_HCLFile_WriteToFile(t *testing.T) {
@@ -77,4 +78,59 @@ func Test_HCLFile_WriteToFile(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_generateResourceName(t *testing.T) {
+	tests := map[string]struct {
+		name    string
+		obj     unstructured.Unstructured
+		want    string
+		wantErr bool
+	}{
+		"no special characters": {
+			obj:     testObject("test", "v1", "Deployment", "test-ns"),
+			want:    "test-ns_v1_Deployment_test",
+			wantErr: false,
+		},
+		"non valid k8s character now and not valid hcl": {
+			obj:     testObject("test", "v1", "Deployment", "test@ns"),
+			want:    "test@ns_v1_Deployment_test",
+			wantErr: true,
+		},
+		"valid k8s backslash character replace with dash": {
+			obj:     testObject("test", "apps/v1", "Deployment", "test-ns"),
+			want:    "test-ns_apps-v1_Deployment_test",
+			wantErr: false,
+		},
+		"valid k8s namespace of only numbers": {
+			obj:     testObject("test", "apps/v1", "Deployment", "123"),
+			want:    "n_123_apps-v1_Deployment_test",
+			wantErr: false,
+		},
+		"if no k8s namespace insert default": {
+			obj:     testObject("test", "v1", "Deployment", ""),
+			want:    "default_v1_Deployment_test",
+			wantErr: false,
+		},
+	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			got, err := generateResourceName(&tc.obj)
+			if (err != nil) && !tc.wantErr {
+				t.Fatalf("generateResourceName() error = %v, wantErr %v", err, tc.wantErr)
+			}
+			if got != tc.want {
+				t.Errorf("generateResourceName() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func testObject(name, apiVersion, kind, namespace string) unstructured.Unstructured {
+	var o unstructured.Unstructured
+	o.SetAPIVersion(apiVersion)
+	o.SetKind(kind)
+	o.SetName(name)
+	o.SetNamespace(namespace)
+	return o
 }

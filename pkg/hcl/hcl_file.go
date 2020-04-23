@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"unicode"
 
 	"github.com/ghodss/yaml"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -33,12 +34,10 @@ func (f *HCLFile) GetFileRootBody() *hclwrite.Body {
 }
 
 func (f *HCLFile) AddK8sObjectToResourceBlockContentFile(o *unstructured.Unstructured, pathToK8sFile string) error {
-	ns := o.GetNamespace()
-	if ns == "" {
-		ns = "default"
+	resourceName, err := generateResourceName(o)
+	if err != nil {
+		return fmt.Errorf("issue generating resource name; err = %v", err)
 	}
-	groupVersion := strings.Replace(o.GetAPIVersion(), "/", "_", -1)
-	resourceName := strings.Join([]string{ns, groupVersion, o.GetKind(), o.GetName()}, "-")
 
 	resourceBlock := f.rootBody.AppendNewBlock("resource", []string{"k8s_manifest", resourceName})
 
@@ -89,12 +88,10 @@ func (f *HCLFile) AddK8sObjectToResourceBlockContentFile(o *unstructured.Unstruc
 }
 
 func (f *HCLFile) AddK8sObjectToResourceBlockContentInline(o *unstructured.Unstructured) error {
-	ns := o.GetNamespace()
-	if ns == "" {
-		ns = "default"
+	resourceName, err := generateResourceName(o)
+	if err != nil {
+		return fmt.Errorf("issue generating resource name; err = %v", err)
 	}
-	groupVersion := strings.Replace(o.GetAPIVersion(), "/", "_", -1)
-	resourceName := strings.Join([]string{ns, groupVersion, o.GetKind(), o.GetName()}, "-")
 
 	resourceBlock := f.rootBody.AppendNewBlock("resource", []string{"k8s_manifest", resourceName})
 
@@ -141,4 +138,27 @@ func (hF *HCLFile) WriteToFile(path string) error {
 		return fmt.Errorf("could not write to file %s; err = %v", f.Name(), err)
 	}
 	return nil
+}
+
+func generateResourceName(o *unstructured.Unstructured) (string, error) {
+	ns := o.GetNamespace()
+
+	if ns == "" {
+		ns = "default"
+	} else if unicode.IsDigit(rune(ns[0])) {
+		// tf resource names can not start with a number
+		resourceNamePrefix := "n"
+		ns = strings.Join([]string{resourceNamePrefix, ns}, "_")
+	}
+
+	resourceName := strings.Join([]string{ns, o.GetAPIVersion(), o.GetKind(), o.GetName()}, "_")
+
+	// remove any backslashes
+	resourceName = strings.Replace(resourceName, "/", "-", -1)
+
+	isValidHCL := hclsyntax.ValidIdentifier(resourceName)
+	if !isValidHCL {
+		return resourceName, fmt.Errorf("error creating resource name %s which is not valid HCL", resourceName)
+	}
+	return resourceName, nil
 }

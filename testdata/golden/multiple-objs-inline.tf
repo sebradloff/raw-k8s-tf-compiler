@@ -1,4 +1,4 @@
-resource "k8s_manifest" "default-apps_v1-Deployment-nginx-deployment-two" {
+resource "k8s_manifest" "default_apps-v1_Deployment_nginx-deployment-two" {
   content = <<EOT
 apiVersion: apps/v1
 kind: Deployment
@@ -24,7 +24,7 @@ spec:
 EOT
 }
 
-resource "k8s_manifest" "default-v1-Service-nginx-two" {
+resource "k8s_manifest" "default_v1_Service_nginx-two" {
   content = <<EOT
 apiVersion: v1
 kind: Service

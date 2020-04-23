@@ -189,7 +189,7 @@ func contentHasSubstring(keyword string) checkFn {
 			contentVal := string(attr.BuildTokens(nil).Bytes())
 
 			if !strings.Contains(contentVal, keyword) {
-				t.Errorf("content value did not inclued keyword %s; got = %s", keyword, contentVal)
+				t.Errorf("content value did not include keyword %s; got = %s", keyword, contentVal)
 			}
 		}
 	}
