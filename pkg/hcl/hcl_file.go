@@ -32,7 +32,7 @@ func (f *HCLFile) GetFileRootBody() *hclwrite.Body {
 	return f.rootBody
 }
 
-func (f *HCLFile) K8sObjectToResourceBlock(o *unstructured.Unstructured, pathToK8sFile string) error {
+func (f *HCLFile) AddK8sObjectToResourceBlockContentFile(o *unstructured.Unstructured, pathToK8sFile string) error {
 	ns := o.GetNamespace()
 	if ns == "" {
 		ns = "default"
@@ -42,71 +42,84 @@ func (f *HCLFile) K8sObjectToResourceBlock(o *unstructured.Unstructured, pathToK
 
 	resourceBlock := f.rootBody.AppendNewBlock("resource", []string{"k8s_manifest", resourceName})
 
-	var tokens hclwrite.Tokens
-	if pathToK8sFile != "" {
-		tokens = hclwrite.Tokens{
-			{
-				Type:  hclsyntax.TokenIdent,
-				Bytes: []byte(`file`),
-			},
-			{
-				Type:  hclsyntax.TokenOParen,
-				Bytes: []byte(`(`),
-			},
-			{
-				Type:  hclsyntax.TokenOQuote,
-				Bytes: []byte(`"`),
-			},
-			{
-				Type:  hclsyntax.TokenTemplateInterp,
-				Bytes: []byte(`${`),
-			},
-			{
-				Type:  hclsyntax.TokenIdent,
-				Bytes: []byte(`path.module`),
-			},
-			{
-				Type:  hclsyntax.TokenTemplateSeqEnd,
-				Bytes: []byte(`}`),
-			},
-			{
-				Type:  hclsyntax.TokenQuotedLit,
-				Bytes: []byte(pathToK8sFile),
-			},
-			{
-				Type:  hclsyntax.TokenCQuote,
-				Bytes: []byte(`"`),
-			},
-			{
-				Type:  hclsyntax.TokenCParen,
-				Bytes: []byte(`)`),
-			},
-		}
-	} else {
-		oJSON, err := o.MarshalJSON()
-		if err != nil {
-			return fmt.Errorf("failed to marshall one object into json: %v", err)
-		}
-		oYaml, err := yaml.JSONToYAML(oJSON)
-		if err != nil {
-			return fmt.Errorf("failed to marshall one object json into yaml: %v", err)
-		}
+	tokens := hclwrite.Tokens{
+		{
+			Type:  hclsyntax.TokenIdent,
+			Bytes: []byte(`file`),
+		},
+		{
+			Type:  hclsyntax.TokenOParen,
+			Bytes: []byte(`(`),
+		},
+		{
+			Type:  hclsyntax.TokenOQuote,
+			Bytes: []byte(`"`),
+		},
+		{
+			Type:  hclsyntax.TokenTemplateInterp,
+			Bytes: []byte(`${`),
+		},
+		{
+			Type:  hclsyntax.TokenIdent,
+			Bytes: []byte(`path.module`),
+		},
+		{
+			Type:  hclsyntax.TokenTemplateSeqEnd,
+			Bytes: []byte(`}`),
+		},
+		{
+			Type:  hclsyntax.TokenQuotedLit,
+			Bytes: []byte(pathToK8sFile),
+		},
+		{
+			Type:  hclsyntax.TokenCQuote,
+			Bytes: []byte(`"`),
+		},
+		{
+			Type:  hclsyntax.TokenCParen,
+			Bytes: []byte(`)`),
+		},
+	}
 
-		tokens = hclwrite.Tokens{
-			{
-				Type:  hclsyntax.TokenOHeredoc,
-				Bytes: []byte("<<EOT\n"),
-			},
-			{
-				Type:  hclsyntax.TokenStringLit,
-				Bytes: oYaml,
-			},
-			{
-				Type:  hclsyntax.TokenCHeredoc,
-				Bytes: []byte("EOT"),
-			},
-		}
+	bT := resourceBlock.Body().BuildTokens(tokens)
+	resourceBlock.Body().SetAttributeRaw("content", bT)
 
+	f.rootBody.AppendNewline()
+	return nil
+}
+
+func (f *HCLFile) AddK8sObjectToResourceBlockContentInline(o *unstructured.Unstructured) error {
+	ns := o.GetNamespace()
+	if ns == "" {
+		ns = "default"
+	}
+	groupVersion := strings.Replace(o.GetAPIVersion(), "/", "_", -1)
+	resourceName := strings.Join([]string{ns, groupVersion, o.GetKind(), o.GetName()}, "-")
+
+	resourceBlock := f.rootBody.AppendNewBlock("resource", []string{"k8s_manifest", resourceName})
+
+	oJSON, err := o.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("failed to marshall one object into json: %v", err)
+	}
+	oYaml, err := yaml.JSONToYAML(oJSON)
+	if err != nil {
+		return fmt.Errorf("failed to marshall one object json into yaml: %v", err)
+	}
+
+	tokens := hclwrite.Tokens{
+		{
+			Type:  hclsyntax.TokenOHeredoc,
+			Bytes: []byte("<<EOT\n"),
+		},
+		{
+			Type:  hclsyntax.TokenStringLit,
+			Bytes: oYaml,
+		},
+		{
+			Type:  hclsyntax.TokenCHeredoc,
+			Bytes: []byte("EOT"),
+		},
 	}
 
 	bT := resourceBlock.Body().BuildTokens(tokens)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,9 +16,9 @@ import (
 )
 
 var (
-	k8sFile    string
-	outputFile string
-	inlineK8s  bool
+	k8sFile       string
+	outputFile    string
+	contentInline bool
 )
 
 // TestCmd returns the unexported rootCmd variable
@@ -63,21 +64,40 @@ var rootCmd = &cobra.Command{
 
 			decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(string(data)), 4096)
 
+			k8sObjects := []*unstructured.Unstructured{}
 			// allows us to capture yaml streams
 			for {
 				var o *unstructured.Unstructured
 				// decode one yaml strem into a k8s object
 				err = decoder.Decode(&o)
 				if err != nil && err != io.EOF {
-					return fmt.Errorf("Failed to unmarshal manifest: %v", err)
+					return fmt.Errorf("failed to unmarshal manifest: %v", err)
 				}
 				if err == io.EOF {
 					break
 				}
 
-				err := hF.K8sObjectToResourceBlock(o, "")
-				if err != nil {
-					return fmt.Errorf("error adding k8s object to resource block: %v", err)
+				k8sObjects = append(k8sObjects, o)
+			}
+
+			// you currently can not send multiple kubernetes objects in a
+			var inlineOverideNeeded bool
+			if len(k8sObjects) > 1 && contentInline == false {
+				log.Printf("will inline resources in file %s, since terraform-provider-k8s can not handle mutiple objects per resource block", f)
+				inlineOverideNeeded = true
+			}
+
+			for _, o := range k8sObjects {
+				if inlineOverideNeeded || contentInline {
+					err := hF.AddK8sObjectToResourceBlockContentInline(o)
+					if err != nil {
+						return fmt.Errorf("AddK8sObjectToResourceBlockContentInline called with object name (%s)", o.GetName())
+					}
+				} else {
+					err := hF.AddK8sObjectToResourceBlockContentFile(o, f)
+					if err != nil {
+						return fmt.Errorf("AddK8sObjectToResourceBlockContentFile called with object name (%s) and k8s file to reference (%s)", o.GetName(), f)
+					}
 				}
 			}
 		}
@@ -100,5 +120,5 @@ func init() {
 	rootCmd.Flags().StringVarP(&outputFile, "outputFile", "o", "", "output file where generated tf will be written")
 	rootCmd.MarkFlagRequired("k8sFile")
 	rootCmd.MarkFlagRequired("outputFile")
-	rootCmd.Flags().BoolVarP(&inlineK8s, "inlineK8s", "i", true, "the content attribute in the resource block will have k8s yaml as a heredoc by default. If false, it will refernce the k8s file.")
+	rootCmd.Flags().BoolVarP(&contentInline, "contentInline", "i", true, "the content attribute in the resource block will have k8s yaml as a heredoc by default. If false, it will refernce the k8s file.")
 }
