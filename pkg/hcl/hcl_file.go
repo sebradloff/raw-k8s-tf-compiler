@@ -46,16 +46,16 @@ func (f *HCLFile) K8sObjectToResourceBlock(o *unstructured.Unstructured, pathToK
 	if pathToK8sFile != "" {
 		tokens = hclwrite.Tokens{
 			{
-				Type:  hclsyntax.TokenOQuote,
-				Bytes: []byte(`"`),
-			},
-			{
 				Type:  hclsyntax.TokenIdent,
 				Bytes: []byte(`file`),
 			},
 			{
 				Type:  hclsyntax.TokenOParen,
 				Bytes: []byte(`(`),
+			},
+			{
+				Type:  hclsyntax.TokenOQuote,
+				Bytes: []byte(`"`),
 			},
 			{
 				Type:  hclsyntax.TokenTemplateInterp,
@@ -74,12 +74,12 @@ func (f *HCLFile) K8sObjectToResourceBlock(o *unstructured.Unstructured, pathToK
 				Bytes: []byte(pathToK8sFile),
 			},
 			{
-				Type:  hclsyntax.TokenCParen,
-				Bytes: []byte(`)`),
-			},
-			{
 				Type:  hclsyntax.TokenCQuote,
 				Bytes: []byte(`"`),
+			},
+			{
+				Type:  hclsyntax.TokenCParen,
+				Bytes: []byte(`)`),
 			},
 		}
 	} else {
