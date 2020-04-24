@@ -1,6 +1,6 @@
 ARG TF_VERSION=0.12.24
 
-FROM hashicorp/terraform:$TF_VERSION
+FROM hashicorp/terraform:$TF_VERSION AS base
 
 RUN apk add --update --no-cache curl tar docker bash
 
@@ -29,10 +29,31 @@ ARG PROVIDER_RELEASE_URL="https://github.com/banzaicloud/terraform-provider-k8s/
 RUN mkdir -p $PLUGINS_DIR
 RUN curl -sL "${PROVIDER_RELEASE_URL}" | tar xvz -C "${PLUGINS_DIR}" -f - "${PROVIDER_NAME}" --transform="s/.*/${TF_PLUGIN_NAME}/"
 
+FROM golang:1.14.1-alpine AS builder
+
+RUN apk update && apk add --no-cache gcc libc-dev git
+
+WORKDIR /build
+
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
+RUN go mod verify
+
+COPY cmd cmd
+COPY pkg pkg
+COPY main.go main.go
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+      -ldflags='-w -s -extldflags "-static"' -a \
+      -o rawk8stfc .
+
+FROM base as finish
+WORKDIR /usr/local/bin/
+COPY --from=builder /build/rawk8stfc /usr/local/bin/rawk8stfc
 
 # Copy over testdata
-WORKDIR /tmp/integration-tests
-COPY testdata/integration-tests .
-COPY testdata/golden .
+WORKDIR /test
+COPY testdata .
 
-ENTRYPOINT ["/bin/bash", "/tmp/integration-tests/test-runner.bash"]
+ENTRYPOINT ["/bin/bash", "/test/integration-tests/test-runner.bash"]
