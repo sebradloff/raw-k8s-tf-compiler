@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -35,4 +37,26 @@ func GetK8sObjectsFromFile(filepath string) ([]*unstructured.Unstructured, error
 	}
 
 	return k8sObjects, nil
+}
+
+func GetK8sFilesToTransform(filePath string) ([]string, error) {
+	var filesToTransform []string
+
+	err := filepath.Walk(filePath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("error accessing a path %q: %v", path, err)
+		}
+		if info.IsDir() {
+			return nil
+		}
+
+		filesToTransform = append(filesToTransform, path)
+		return nil
+	})
+
+	if err != nil {
+		return filesToTransform, err
+	}
+
+	return filesToTransform, nil
 }
