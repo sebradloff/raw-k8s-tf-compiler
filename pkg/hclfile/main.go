@@ -68,7 +68,7 @@ func (f *HCLFile) AddK8sObjectToResourceBlockContentFile(o *unstructured.Unstruc
 		},
 		{
 			Type:  hclsyntax.TokenQuotedLit,
-			Bytes: []byte(pathToK8sFile),
+			Bytes: []byte("/" + pathToK8sFile),
 		},
 		{
 			Type:  hclsyntax.TokenCQuote,
