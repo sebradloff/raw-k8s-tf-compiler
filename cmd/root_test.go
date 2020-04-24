@@ -1,16 +1,14 @@
 package cmd_test
 
 import (
-	"bytes"
 	"flag"
-	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strconv"
+	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/sebradloff/rawk8stfc/cmd"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 var (
@@ -23,109 +21,55 @@ func init() {
 
 const testdataFilePath = "../testdata"
 
-func TestRoot(t *testing.T) {
-	type checkFn func(*testing.T, string, string, error)
-	check := func(fns ...checkFn) []checkFn { return fns }
+func TestRootCmd(t *testing.T) {
+	rc := cmd.NewRootCmd()
 
-	hasNoErr := func() checkFn {
-		return func(t *testing.T, goldenFilePath, outputFilePath string, err error) {
-			if err != nil {
-				t.Fatalf("err = %v; want nil", err)
+	// requires flags
+	requiredFlags := &[]string{"outputFile", "k8sFile"}
+
+	rc.PersistentFlags().VisitAll(func(f *pflag.Flag) {
+		if contains(*requiredFlags, f.Name) {
+			v, ok := f.Annotations[cobra.BashCompOneRequiredFlag]
+			if !ok {
+				t.Errorf("required annotation not found for flag %s", f.Name)
 			}
+			if reflect.DeepEqual(v, []bool{true}) {
+				t.Errorf("flag %s is not marked as required; got = %s", f.Name, v)
+			}
+
+			requiredFlags = remove(*requiredFlags, f.Name)
+		}
+	})
+
+	if len(*requiredFlags) != 0 {
+		t.Errorf("the following persistent flags were not marked as required: %s", *requiredFlags)
+	}
+
+	// has sub commands
+	expectedSubCommands := &[]string{"inline", "file-reference"}
+	for _, c := range rc.Commands() {
+		if contains(*expectedSubCommands, c.Name()) {
+			expectedSubCommands = remove(*expectedSubCommands, c.Name())
 		}
 	}
 
-	goldenMatchesGot := func() checkFn {
-		return func(t *testing.T, goldenFilePath, outputFilePath string, err error) {
-			got, err := os.Open(outputFilePath)
-			if err != nil {
-				t.Fatalf("failed to open the got file: %s. err = %v", outputFilePath, err)
-			}
-			defer got.Close()
-			gotBytes, err := ioutil.ReadAll(got)
-			if err != nil {
-				t.Fatalf("failed to read the got file: %s. err = %v", outputFilePath, err)
-			}
-
-			want, err := os.Open(goldenFilePath)
-			if err != nil {
-				t.Fatalf("failed to open the golden file: %s. err = %v", goldenFilePath, err)
-			}
-			defer want.Close()
-			wantBytes, err := ioutil.ReadAll(want)
-			if err != nil {
-				t.Fatalf("failed to read the golden file: %s. err = %v", goldenFilePath, err)
-			}
-
-			if bytes.Compare(gotBytes, wantBytes) != 0 {
-				t.Fatalf("golden file (%s) does not match the output file (%s)", goldenFilePath, outputFilePath)
-			}
-			os.Remove(outputFilePath)
-		}
+	if len(*expectedSubCommands) != 0 {
+		t.Errorf("the following sub commands were not present on the root cmd: %s", *expectedSubCommands)
 	}
 
-	tests := map[string]struct {
-		k8sFileName   string
-		contentInline bool
-		checks        []checkFn
-	}{
-		"One file with one kubernetes object inline k8s manifest": {
-			k8sFileName:   "one-obj",
-			contentInline: true,
-			checks:        check(hasNoErr(), goldenMatchesGot()),
-		},
-		"One file with multiple kubernetes objects and inline k8s manifest": {
-			k8sFileName:   "multiple-objs",
-			contentInline: true,
-			checks:        check(hasNoErr(), goldenMatchesGot()),
-		},
-		"One file with one kubernetes object reference k8s manifest file": {
-			k8sFileName:   "one-obj",
-			contentInline: false,
-			checks:        check(hasNoErr(), goldenMatchesGot()),
-		},
-	}
+}
 
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
-			// setup files
-			k8sFilePath := filepath.Join(testdataFilePath, "k8s-files", fmt.Sprintf("%s.yaml", tc.k8sFileName))
+func contains(s []string, searchterm string) bool {
+	sort.Strings(s)
+	i := sort.SearchStrings(s, searchterm)
+	return i < len(s) && s[i] == searchterm
+}
 
-			var goldenFileName string
-			if tc.contentInline {
-				goldenFileName = fmt.Sprintf("%s-inline.tf", tc.k8sFileName)
-			} else {
-				goldenFileName = fmt.Sprintf("%s-file.tf", tc.k8sFileName)
-			}
-
-			goldenFilePath := filepath.Join(testdataFilePath, "golden", goldenFileName)
-			outputFilePath := filepath.Join(os.TempDir(), goldenFileName)
-
-			// set cmd flags
-			cmd := cmd.TestCmd()
-			cmd.Flags().Set("k8sFile", k8sFilePath)
-			cmd.Flags().Set("outputFile", outputFilePath)
-			cmd.Flags().Set("contentInline", strconv.FormatBool(tc.contentInline))
-			err := cmd.RunE(cmd, []string{})
-			if err != nil {
-				t.Errorf("running root command failed. err = %v", err)
-			}
-
-			// if updateFlag perform the same command and write results to golden file
-			if updateFlag {
-				cmd.Flags().Set("k8sFile", k8sFilePath)
-				cmd.Flags().Set("outputFile", goldenFilePath)
-				cmd.Flags().Set("contentInline", strconv.FormatBool(tc.contentInline))
-				err := cmd.RunE(cmd, []string{})
-				if err != nil {
-					t.Errorf("running root command failed. err = %v", err)
-				}
-			}
-
-			for _, check := range tc.checks {
-				check(t, goldenFilePath, outputFilePath, err)
-			}
-		})
-	}
-
+func remove(s []string, searchterm string) *[]string {
+	sort.Strings(s)
+	i := sort.SearchStrings(s, searchterm)
+	s[i] = s[len(s)-1]
+	s[len(s)-1] = ""
+	s = s[:len(s)-1]
+	return &s
 }
