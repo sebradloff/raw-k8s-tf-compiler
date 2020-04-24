@@ -22,3 +22,6 @@ integration-tests: build-test-image ## validate golden files work with terraform
 
 shell: build-test-image ## run the integration-tests container and interact with it
 	docker run -it --rm -v /var/run/docker.sock:/var/run/docker.sock --entrypoint bash integration-tests
+
+coverage: ## show test coverage in browser
+	go test -coverprofile=cover.out ./... && go tool cover -html=cover.out
