@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/sebradloff/rawk8stfc/cmd"
@@ -13,6 +14,18 @@ import (
 type checkFn func(*testing.T, string, string, error)
 
 func check(fns ...checkFn) []checkFn { return fns }
+
+func hasErr(errMsg string) checkFn {
+	return func(t *testing.T, goldenFilePath, outputFilePath string, err error) {
+		if err == nil {
+			t.Fatal("want err; got nil")
+		}
+
+		if !strings.Contains(err.Error(), errMsg) {
+			t.Errorf("error did not contain string %s; got %v", errMsg, err)
+		}
+	}
+}
 
 func hasNoErr() checkFn {
 	return func(t *testing.T, goldenFilePath, outputFilePath string, err error) {

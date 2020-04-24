@@ -1,6 +1,7 @@
 package cmd_test
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,10 +12,22 @@ func TestFileReferenceCmd(t *testing.T) {
 	tests := map[string]struct {
 		k8sFileName string
 		checks      []checkFn
+		wantErr     bool
 	}{
 		"One file with one kubernetes object reference k8s manifest file": {
 			k8sFileName: "one-obj",
 			checks:      check(hasNoErr(), goldenMatchesGot()),
+			wantErr:     false,
+		},
+		"One file with multiple kubernetes objects and inline k8s manifest": {
+			k8sFileName: "multiple-objs",
+			checks:      check(hasNoErr(), goldenMatchesGot()),
+			wantErr:     false,
+		},
+		"Non existant file should return error": {
+			k8sFileName: "non-existant",
+			checks:      check(hasErr("no such file or directory")),
+			wantErr:     true,
 		},
 	}
 
@@ -32,8 +45,12 @@ func TestFileReferenceCmd(t *testing.T) {
 			// setup root command and persistent flags
 			commandToRun := "file-reference"
 			rc := rootCommandSetup(k8sFilePath, outputFilePath, commandToRun)
+			// create buffer for output
+			b := bytes.NewBufferString("")
+			rc.SetOut(b)
+
 			err := rc.Execute()
-			if err != nil {
+			if err != nil && !tc.wantErr {
 				t.Errorf("running inline command failed. err = %v", err)
 			}
 
