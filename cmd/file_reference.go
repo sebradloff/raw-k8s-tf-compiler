@@ -2,10 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
-	"os"
-	"path/filepath"
 
 	"github.com/sebradloff/rawk8stfc/pkg/hclfile"
 	"github.com/spf13/cobra"
@@ -15,26 +12,9 @@ var fileReferenceCmd = &cobra.Command{
 	Use:   "file-reference",
 	Short: "Create tf resource block for each kubernetes resource specified by filename or directory with content referecing the file in which the resource resides",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var filesToTransform []string
-
-		// determine if k8sFile is a file or directory
-		fi, err := os.Stat(k8sFile)
+		filesToTransform, err := hclfile.GetK8sFilesToTransform(k8sFile)
 		if err != nil {
-			return fmt.Errorf("os.Stat(%s): %v", k8sFile, err)
-		}
-		if fi.Mode().IsDir() {
-			// get all files in directory
-			files, err := ioutil.ReadDir(k8sFile)
-			if err != nil {
-				return fmt.Errorf("ioutil.ReadDir(%s): %v", k8sFile, err)
-			}
-			for _, f := range files {
-				fn := filepath.Join(k8sFile, f.Name())
-				filesToTransform = append(filesToTransform, fn)
-			}
-		} else {
-			// passed in object was file
-			filesToTransform = append(filesToTransform, k8sFile)
+			return fmt.Errorf("GetK8sFilesToTransform(%s): %v", k8sFile, err)
 		}
 
 		// write hcl to tf file
