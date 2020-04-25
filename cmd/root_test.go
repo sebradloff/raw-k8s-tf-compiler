@@ -6,7 +6,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/sebradloff/rawk8stfc/cmd"
+	"github.com/sebradloff/raw-k8s-tf-compiler/cmd"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )

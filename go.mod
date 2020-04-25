@@ -1,4 +1,4 @@
-module github.com/sebradloff/rawk8stfc
+module github.com/sebradloff/raw-k8s-tf-compiler
 
 go 1.14
 

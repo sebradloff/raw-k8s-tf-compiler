@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/ghodss/yaml"
-	"github.com/sebradloff/rawk8stfc/pkg/hclfile"
+	"github.com/sebradloff/raw-k8s-tf-compiler/pkg/hclfile"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 

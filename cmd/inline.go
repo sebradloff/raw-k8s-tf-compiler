@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/sebradloff/rawk8stfc/pkg/hclfile"
+	"github.com/sebradloff/raw-k8s-tf-compiler/pkg/hclfile"
 	"github.com/spf13/cobra"
 )
 

@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
-	h "github.com/sebradloff/rawk8stfc/pkg/hclfile"
+	h "github.com/sebradloff/raw-k8s-tf-compiler/pkg/hclfile"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
