@@ -25,3 +25,11 @@ shell: build-test-image ## run the integration-tests container and interact with
 
 coverage: ## show test coverage in browser
 	go test -coverprofile=cover.out ./... && go tool cover -html=cover.out
+
+goreleaser: ## create a release using goreleaser
+	docker run -it --rm --privileged \
+		-v $(PWD):/go/src/github.com/sebradloff/raw-k8s-tf-compiler \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		-w /go/src/github.com/sebradloff/raw-k8s-tf-compiler \
+		-e GITHUB_TOKEN \
+		goreleaser/goreleaser:v0.132.1 release --rm-dist

@@ -1,0 +1,20 @@
+project_name: raw-k8s-tf-compiler
+before:
+  hooks:
+    - go mod download
+    - go generate ./...
+builds:
+- binary: rawk8stfc
+  env:
+  - CGO_ENABLED=0
+  goos:
+      - darwin
+      - linux
+  goarch:
+    - amd64
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'

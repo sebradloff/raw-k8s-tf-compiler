@@ -2,3 +2,5 @@ rawk8stfc
 .history/
 .terraform/
 cover.out
+# goreleaser
+dist/
